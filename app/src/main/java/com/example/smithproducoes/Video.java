@@ -8,5 +8,7 @@ public class Video {
     public String getPath(){
         return path;
     }
-    public void test(){}
+    public String test(){
+        return path;
+    }
 }
