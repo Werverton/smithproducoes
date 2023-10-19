@@ -47,13 +47,16 @@ import org.apache.http.impl.client.HttpClients;
 public class DownloadVideoActivity extends AppCompatActivity {
 
     private static final int REQUEST_CODE = 1;
-    private final ActivityResultLauncher<String> activityResultLauncher = registerForActivityResult(new ActivityResultContracts.RequestPermission(), result -> {
-        if(result){
-            requestStoragePermission();
-        }
-    });
+//    private final ActivityResultLauncher<String> activityResultLauncher = registerForActivityResult(new ActivityResultContracts.RequestPermission(), result -> {
+//        if(result){
+//            requestStoragePermission();
+//        }
+//    });
+
+    private long downloadID;
     private EditText Urllist;
     private Button downloadButton;
+    private static final String TAG = "DownloadVideoActivity";
 
     private DownloadManager downloadManager;
     private long downloadId;
@@ -65,36 +68,67 @@ public class DownloadVideoActivity extends AppCompatActivity {
 
         isPermissionGranted();
 
-//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-//            if(Environment.isExternalStorageManager()){
-//                Intent intent = new Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION);
-//                Uri uri = Uri.fromParts("package", getPackageName(), null);
-//                intent.setData(uri);
-//                startActivity(intent);
-//            }
-
-//        if (ContextCompat.checkSelfPermission(this, Manifest.permission.MANAGE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-//            // Se a permissão não foi concedida, solicite-a ao usuário
-//            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.MANAGE_EXTERNAL_STORAGE}, REQUEST_CODE);
-//
-//        }
-
-
         downloadButton = findViewById(R.id.button);
-//        downloadButton.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View view) {
-//                if(ContextCompat.checkSelfPermission(DownloadVideoActivity.this,
-//                        Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED){
-//                    Toast.makeText(DownloadVideoActivity.this, "you have al", Toast.LENGTH_SHORT).show();
-//                } else {
-//                    requestStoragePermission();
-//                }
-//
-//            }
-//        });
+
+        downloadButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                //https://drive.google.com/file/d/1bRVktPCrRZA19OzDHB8RfYxynDbRslGN/view?usp=sharing
+                //https://drive.google.com/file/d/1Mm56njT0dQ3mZzRaAGsZHw9lGAtXbMEF/view?usp=sharing
+                String videoUrl = "https://drive.google.com/uc?export=download&id=1Mm56njT0dQ3mZzRaAGsZHw9lGAtXbMEF";
+                //String videoUrl = "https://drive.google.com/uc?export=download&id=1bRVktPCrRZA19OzDHB8RfYxynDbRslGN";
+                String videoTitle = "video";
+
+                downloadVideo(DownloadVideoActivity.this, videoUrl, videoTitle);
+            }
+        });
+        registerReceiver(onDownloadComplete, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
+
 
     }
+
+    private void downloadVideo(DownloadVideoActivity downloadVideoActivity, String videoUrl, String videoTitle) {
+        Log.i(TAG, "Download video iniciado");
+
+        try{
+            DownloadManager.Request request = new DownloadManager.Request(Uri.parse(videoUrl));
+            request.setTitle(videoTitle);
+            request.setDescription("Baixando Video");
+
+
+            request.setDestinationInExternalPublicDir(Environment.DIRECTORY_MOVIES, videoTitle +".mp4");
+            request.setAllowedNetworkTypes(DownloadManager.Request.NETWORK_WIFI | DownloadManager.Request.NETWORK_MOBILE);
+
+            request.allowScanningByMediaScanner();
+            request.setAllowedOverMetered(true);
+            request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+            request.setAllowedOverRoaming(true);
+
+            DownloadManager manager = (DownloadManager) downloadVideoActivity.getSystemService(Context.DOWNLOAD_SERVICE);
+            downloadID = manager.enqueue(request);
+        } catch (IllegalArgumentException e){
+            Toast.makeText(DownloadVideoActivity.this, "Algo deu errado!", Toast.LENGTH_SHORT).show();
+            Log.e(TAG, "Line no: 455,Method: downloadFile: Download link is broken");
+        }
+
+
+
+        Log.i(TAG, "Download video concluido.");
+    }
+
+    private BroadcastReceiver onDownloadComplete = new BroadcastReceiver() {
+        public void onReceive(Context context, Intent intent) {
+            long receivedID = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1);
+            if (receivedID == downloadID) {
+                // O download foi concluído
+                Toast.makeText(DownloadVideoActivity.this, "Download concluído!", Toast.LENGTH_SHORT).show();
+                Intent newActivityIntent = new Intent(DownloadVideoActivity.this, MainActivity.class);
+                startActivity(newActivityIntent);
+            }
+        }
+    };
+
+
     private void isPermissionGranted(){
         if(ContextCompat.checkSelfPermission(DownloadVideoActivity.this,
                 Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED){
@@ -127,6 +161,7 @@ public class DownloadVideoActivity extends AppCompatActivity {
         }
     }
 
+
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -136,6 +171,13 @@ public class DownloadVideoActivity extends AppCompatActivity {
             } else {
                 Toast.makeText(this, "Permissão negada", Toast.LENGTH_SHORT).show();
             }
+        }
+    }
+    private class DownloadVideoTask2 extends AsyncTask<Void, Void, Boolean>{
+
+        @Override
+        protected Boolean doInBackground(Void... voids) {
+            return null;
         }
     }
 }
@@ -336,4 +378,4 @@ public class DownloadVideoActivity extends AppCompatActivity {
 //            }
 //        }
 //    }
-
+//
