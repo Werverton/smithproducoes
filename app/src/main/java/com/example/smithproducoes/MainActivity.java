@@ -2,48 +2,33 @@ package com.example.smithproducoes;
 
 
 
-import static com.google.android.material.internal.ContextUtils.getActivity;
-
-import androidx.activity.result.ActivityResultCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
-import androidx.core.content.PermissionChecker;
-import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import android.content.ContentUris;
-import android.content.Context;
-import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.database.Cursor;
-import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Bundle;
-import android.provider.MediaStore;
 import android.util.Log;
-import android.view.View;
 import android.widget.MediaController;
 import android.widget.Toast;
 import android.widget.VideoView;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity {
-    private final ActivityResultLauncher<String> activityResultLauncher = registerForActivityResult(new ActivityResultContracts.RequestPermission(), result -> {
-        if(result){
-            getVideos();
-        }
-    });
+//    private final ActivityResultLauncher<String> activityResultLauncher = registerForActivityResult(new ActivityResultContracts.RequestPermission(), result -> {
+//        if(result){
+//            getVideos();
+//        }
+//    });
     VideoView videoView;
     private static final String TAG = "MyActivity";
 
-    ArrayList<Video> arrayList = new ArrayList<>();
+    ArrayList<VideoModel> arrayList = new ArrayList<>();
     ArrayList<String> videoUrls = new ArrayList<>();
     RecyclerView recyclerView;
     private static int currentVideo = 0;
@@ -57,19 +42,17 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
 
-        if (ContextCompat.checkSelfPermission( MainActivity.this, android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-            activityResultLauncher.launch (android.Manifest.permission.WRITE_EXTERNAL_STORAGE);
-        } else if (ContextCompat.checkSelfPermission( MainActivity.this, android.Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-            activityResultLauncher.launch (android.Manifest.permission.READ_EXTERNAL_STORAGE);
-        } else{
-            videoUrls = getVideos();
-        }
+//        if (ContextCompat.checkSelfPermission( MainActivity.this, android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+//            activityResultLauncher.launch (android.Manifest.permission.WRITE_EXTERNAL_STORAGE);
+//        } else if (ContextCompat.checkSelfPermission( MainActivity.this, android.Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+//            activityResultLauncher.launch (android.Manifest.permission.READ_EXTERNAL_STORAGE);
+//        } else{
+//            videoUrls = getVideos();
+//        }
 
 
-        //VideoView videoView = findViewById(R.id.videoView);
         videoUrls = getVideos();
         Log.i(TAG, "tamanho da list "+ videoUrls.size());
-        getNextVideo();
         if(videoUrls.isEmpty()){
             Toast.makeText(this,"Sem Videos", Toast.LENGTH_SHORT).show();
         }
@@ -105,14 +88,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void getNextVideo(){
-        if (videoUrls.isEmpty()){
-            Log.i(TAG, "vazia: ");
-        } else {
-            Log.i(TAG, "tem elementos: ");
-        }
-
-    }
 
     @Override
     protected void onResume() {

@@ -29,11 +29,17 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
 
 import android.os.Environment;
 import android.util.Log;
@@ -54,12 +60,17 @@ public class DownloadVideoActivity extends AppCompatActivity {
 //    });
 
     private long downloadID;
-    private EditText Urllist;
+    private EditText urlListId;
     private Button downloadButton;
     private static final String TAG = "DownloadVideoActivity";
 
-    private DownloadManager downloadManager;
+    private static final String BASE_URL = "https://drive.google.com/uc?export=download&id=";
+
     private long downloadId;
+    private int downloadCount = 0;
+    List<VideoModel> listDeUrls = new ArrayList<>();
+
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -68,35 +79,61 @@ public class DownloadVideoActivity extends AppCompatActivity {
 
         isPermissionGranted();
 
+        urlListId = findViewById(R.id.URLInput);
+
+
+
         downloadButton = findViewById(R.id.button);
 
         downloadButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                //https://drive.google.com/file/d/1bRVktPCrRZA19OzDHB8RfYxynDbRslGN/view?usp=sharing
-                //https://drive.google.com/file/d/1Mm56njT0dQ3mZzRaAGsZHw9lGAtXbMEF/view?usp=sharing
-                String videoUrl = "https://drive.google.com/uc?export=download&id=1Mm56njT0dQ3mZzRaAGsZHw9lGAtXbMEF";
-                //String videoUrl = "https://drive.google.com/uc?export=download&id=1bRVktPCrRZA19OzDHB8RfYxynDbRslGN";
-                String videoTitle = "video";
 
-                downloadVideo(DownloadVideoActivity.this, videoUrl, videoTitle);
+                String url1 = "https://drive.google.com/uc?export=download&id=1uHEEku8YIhVqixThZ3qv70ZQ2Zdnl0fC";
+                String url2 = "https://drive.google.com/uc?export=download&id=1EyJ0bWwGtmlpZj1TTdteD9GOiHU_KIO0";
+                String url3 = "https://drive.google.com/uc?export=download&id=1bNsof3tOIrcHkFUC88X1EWW6t8FyOair";
+                String url4 = "https://drive.google.com/uc?export=download&id=1Mm56njT0dQ3mZzRaAGsZHw9lGAtXbMEF";
+                String url5 = "https://drive.google.com/uc?export=download&id=1sq3btgjqeb_L5MPlKESMYVSOIjTIenav";
+
+                listDeUrls.add(new VideoModel(url1, "propaganda1","qualquernome1"));
+                listDeUrls.add(new VideoModel(url2, "propaganda2","qualquernome2"));
+                listDeUrls.add(new VideoModel(url3, "proganda3", "Qualquernome3"));
+                listDeUrls.add(new VideoModel(url4, "propaganda4", "uqlauqernome4"));
+                listDeUrls.add(new VideoModel(url5, "propaganda5", "qualquernome5"));
+                //Url da lista
+                //https://drive.google.com/file/d/1j53hOMduSy7i1I-QTS1vmx0ktjLKAVHd/view?usp=share_link
+                //https://drive.google.com/file/d/1j53hOMduSy7i1I-QTS1vmx0ktjLKAVHd/view?usp=share_link
+
+                String urlBase = "https://drive.google.com/uc?export=download&id=";
+                String playlistUrl = urlBase+urlListId.getText().toString();
+                Toast.makeText(DownloadVideoActivity.this, playlistUrl, Toast.LENGTH_SHORT).show();
+
+
+
+
+                //String videoUrl = "https://drive.google.com/uc?export=download&id=1Mm56njT0dQ3mZzRaAGsZHw9lGAtXbMEF";
+                //String videoTitle = "video";
+                //downloadJsonFile(DownloadVideoActivity.this, playlistUrl);
+                for (VideoModel video : listDeUrls) {
+                    downloadVideo(DownloadVideoActivity.this, video.getUrl(), video.getName());
+                }
+
             }
         });
         registerReceiver(onDownloadComplete, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
 
-
     }
 
-    private void downloadVideo(DownloadVideoActivity downloadVideoActivity, String videoUrl, String videoTitle) {
-        Log.i(TAG, "Download video iniciado");
 
+    private void downloadJsonFile(DownloadVideoActivity downloadVideoActivity, String playlistUrl) {
+        Log.i(TAG, "Download JSON iniciado");
         try{
-            DownloadManager.Request request = new DownloadManager.Request(Uri.parse(videoUrl));
-            request.setTitle(videoTitle);
+            DownloadManager.Request request = new DownloadManager.Request(Uri.parse(playlistUrl));
+            request.setTitle("Baixando playlist");
             request.setDescription("Baixando Video");
 
 
-            request.setDestinationInExternalPublicDir(Environment.DIRECTORY_MOVIES, videoTitle +".mp4");
+            request.setDestinationInExternalPublicDir(Environment.DIRECTORY_MOVIES, "playlist" +".json");
             request.setAllowedNetworkTypes(DownloadManager.Request.NETWORK_WIFI | DownloadManager.Request.NETWORK_MOBILE);
 
             request.allowScanningByMediaScanner();
@@ -107,11 +144,54 @@ public class DownloadVideoActivity extends AppCompatActivity {
             DownloadManager manager = (DownloadManager) downloadVideoActivity.getSystemService(Context.DOWNLOAD_SERVICE);
             downloadID = manager.enqueue(request);
         } catch (IllegalArgumentException e){
-            Toast.makeText(DownloadVideoActivity.this, "Algo deu errado!", Toast.LENGTH_SHORT).show();
-            Log.e(TAG, "Line no: 455,Method: downloadFile: Download link is broken");
+            Log.e(TAG, e.toString());
+
         }
 
+        Log.i(TAG, "Download JSON concluido");
+    }
 
+
+    private boolean isVideoAlreadyDownloaded(String videoFileName) {
+        // Obtenha o caminho da pasta "Movies"
+        File moviesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES);
+        if (moviesDir != null) {
+            // Crie um arquivo com o caminho completo do vídeo que você deseja verificar
+            File videoFile = new File(moviesDir, videoFileName+".mp4");
+
+            Log.i(TAG, "video file : "+videoFile);
+
+            Boolean exist = videoFile.exists();
+
+            Log.i(TAG, "video file : "+exist);
+
+            return exist;
+        }
+        return false;
+    }
+
+    private void downloadVideo(DownloadVideoActivity downloadVideoActivity, String videoUrl, String videoTitle) {
+        Log.i(TAG, "Download video iniciado");
+            try{
+                DownloadManager.Request request = new DownloadManager.Request(Uri.parse(videoUrl));
+                request.setTitle(videoTitle);
+                request.setDescription("Baixando Video");
+
+
+                request.setDestinationInExternalPublicDir(Environment.DIRECTORY_MOVIES, videoTitle +".mp4");
+                request.setAllowedNetworkTypes(DownloadManager.Request.NETWORK_WIFI | DownloadManager.Request.NETWORK_MOBILE);
+
+                request.allowScanningByMediaScanner();
+                request.setAllowedOverMetered(true);
+                request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+                request.setAllowedOverRoaming(true);
+
+                DownloadManager manager = (DownloadManager) downloadVideoActivity.getSystemService(Context.DOWNLOAD_SERVICE);
+                manager.enqueue(request);
+            } catch (IllegalArgumentException e){
+                Toast.makeText(DownloadVideoActivity.this, "Algo deu errado!", Toast.LENGTH_SHORT).show();
+                Log.e(TAG, "Line no: 455,Method: downloadFile: Download link is broken");
+            }
 
         Log.i(TAG, "Download video concluido.");
     }
@@ -119,16 +199,33 @@ public class DownloadVideoActivity extends AppCompatActivity {
     private BroadcastReceiver onDownloadComplete = new BroadcastReceiver() {
         public void onReceive(Context context, Intent intent) {
             long receivedID = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1);
-            if (receivedID == downloadID) {
-                // O download foi concluído
-                Toast.makeText(DownloadVideoActivity.this, "Download concluído!", Toast.LENGTH_SHORT).show();
-                Intent newActivityIntent = new Intent(DownloadVideoActivity.this, MainActivity.class);
-                startActivity(newActivityIntent);
+            if (receivedID != -1) {
+
+                downloadCount++;
+                if(downloadCount== listDeUrls.size()){
+                    Toast.makeText(DownloadVideoActivity.this, "Download concluído!", Toast.LENGTH_SHORT).show();
+                    Intent newActivityIntent = new Intent(DownloadVideoActivity.this, MainActivity.class);
+                    startActivity(newActivityIntent);
+                    finish();
+                }
+
             }
         }
     };
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
 
+        // Certifique-se de desregistrar o BroadcastReceiver quando não for mais necessário
+        if (onDownloadComplete != null) {
+            unregisterReceiver(onDownloadComplete);
+        }
+    }
+
+
+
+    //Permissões ------------------------------------
     private void isPermissionGranted(){
         if(ContextCompat.checkSelfPermission(DownloadVideoActivity.this,
                 Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED){
@@ -173,209 +270,4 @@ public class DownloadVideoActivity extends AppCompatActivity {
             }
         }
     }
-    private class DownloadVideoTask2 extends AsyncTask<Void, Void, Boolean>{
-
-        @Override
-        protected Boolean doInBackground(Void... voids) {
-            return null;
-        }
-    }
 }
-
-
-            // Inicialize o DownloadManager
-//        downloadManager = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
-//
-//        // Defina os detalhes do download
-//        Uri videoUri = Uri.parse("URL_DO_VÍDEO_AQUI"); // Substitua pelo URL do vídeo que deseja baixar
-//        DownloadManager.Request request = new DownloadManager.Request(videoUri);
-//        request.setTitle("Nome do Vídeo"); // Nome do arquivo a ser exibido no gerenciador de downloads
-//        request.setDescription("Baixando vídeo...");
-//
-//        // Defina o diretório de destino para "Movies"
-//        request.setDestinationInExternalPublicDir(Environment.DIRECTORY_MOVIES, "nome_do_video.mp4");
-//
-//        // Inicie o download e capture o ID do download
-//        downloadId = downloadManager.enqueue(request);
-//
-//        // Registre um receptor de transmissão para monitorar o progresso do download
-//        registerReceiver(onComplete, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
-
-
-//    private BroadcastReceiver onComplete = new BroadcastReceiver() {
-//        @Override
-//        public void onReceive(Context context, Intent intent) {
-//            // Verifique se o download foi bem-sucedido
-//            long id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1);
-//            if (id == downloadId) {
-//                // O download foi concluído com sucesso
-//                Toast.makeText(DownloadVideoActivity.this, "Download concluído", Toast.LENGTH_SHORT).show();
-//            }
-//        }
-    //};
-
-//    @Override
-//    protected void onDestroy() {
-//        super.onDestroy();
-//        // Desregistre o receptor de transmissão para evitar vazamentos de memória
-//        unregisterReceiver(onComplete);
-//    }
-
-
-
-
-//        Urllist = findViewById(R.id.URLInput);
-//
-//        downloadButton = findViewById(R.id.button);
-//        downloadButton.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View view) {
-//                // Inicia a tarefa de download em segundo plano
-//                new DownloadVideoTask2().execute();
-//            }
-//        });
-//    }
-//    @Override
-//    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-//        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-//
-//        if (requestCode == REQUEST_CODE) {
-//            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-//                // A permissão foi concedida, você pode acessar o armazenamento agora
-//                Toast.makeText(DownloadVideoActivity.this, "Permissão concedida!", Toast.LENGTH_SHORT).show();
-//            } else {
-//                // A permissão foi negada, informe ao usuário que a funcionalidade não está disponível
-//                Toast.makeText(DownloadVideoActivity.this, "Permissão negada!", Toast.LENGTH_SHORT).show();
-//            }
-//        }
-//    }
-
-
-
-    //isso aqui funciona só pra baixar a lista JSON
-//    private class DownloadJsonTask extends AsyncTask<Void, Void, Boolean> {
-//
-//        @Override
-//        protected Boolean doInBackground(Void... voids) {
-//            OkHttpClient client = new OkHttpClient();
-//
-//            String fileId = "1j53hOMduSy7i1I-QTS1vmx0ktjLKAVHd"; // Substitua pelo ID do arquivo
-//            //String url = "https://drive.google.com/uc?export=download&id=" + fileId;
-//
-//            String url = "https://drive.google.com/uc?export=download&id=1Mm56njT0dQ3mZzRaAGsZHw9lGAtXbMEF";
-
-
-//
-//            //String url = "https://drive.google.com/file/d/1j53hOMduSy7i1I-QTS1vmx0ktjLKAVHd"; // Substitua pelo URL do arquivo JSON que deseja baixar
-//            Log.e("DownloadJsonTask", "Baixando: " + url);
-//            try {
-//                Request request = new Request.Builder()
-//                        .url(url)
-//                        .build();
-//
-//                Response response = client.newCall(request).execute();
-//
-//                Log.e("DownloadJsonTask", "response: " + response);
-//
-//
-//                if (response.isSuccessful()) {
-//                    String json = response.body().string();
-//                    File jsonFile = new File(Environment.getExternalStorageDirectory(), "Movies/backinblack.mp4"); // Substitua o nome do arquivo e local de salvamento conforme necessário
-//
-//                    try (FileOutputStream fos = new FileOutputStream(jsonFile)) {
-//                        fos.write(json.getBytes());
-//                    }
-//
-//                    return true;
-//                } else {
-//                    Log.e("DownloadJsonTask", "Erro no download do JSON: " + response.code());
-//                }
-//            } catch (IOException e) {
-//                Log.e("DownloadJsonTask", "Exceção ao baixar JSON: " + e.getMessage());
-//            }
-//
-//            return false;
-//        }
-//
-//        @Override
-//        protected void onPostExecute(Boolean result) {
-//            if (result) {
-//                Toast.makeText(DownloadVideoActivity.this, "Arquivo JSON baixado com sucesso!", Toast.LENGTH_SHORT).show();
-//            } else {
-//                Toast.makeText(DownloadVideoActivity.this, "Erro ao baixar o arquivo JSON", Toast.LENGTH_SHORT).show();
-//            }
-//        }
-//    }
-
-//    private class DownloadTask extends AsyncTask<Void, Void, Boolean> {
-//
-//        @Override
-//        protected Boolean doInBackground(Void... voids) {
-//            // Coloque seu código de download de vídeos aqui
-//            // Certifique-se de solicitar as permissões de Internet e Armazenamento
-//
-//            try {
-//                // Simula um download
-//                Thread.sleep(3000);
-//                return true;
-//            } catch (InterruptedException e) {
-//                e.printStackTrace();
-//                return false;
-//            }
-//        }
-//
-//        @Override
-//        protected void onPostExecute(Boolean result) {
-//            if (result) {
-//                // Se o download for bem-sucedido, inicie a próxima atividade
-//                Intent intent = new Intent(DownloadVideoActivity.this, MainActivity.class);
-//                startActivity(intent);
-//            } else {
-//                // Caso contrário, lide com o erro
-//                // Exemplo: exibir uma mensagem de erro
-//                // Toast.makeText(MainActivity.this, "Erro no download", Toast.LENGTH_SHORT).show();
-//            }
-//        }
-//    }
-
-//    private class DownloadVideoTask2 extends AsyncTask<Void, Void, Boolean>{
-//
-//        @Override
-//        protected Boolean doInBackground(Void... voids) {
-//            HttpClient httpClient = HttpClients.createDefault();
-//            //https://drive.google.com/file/d/0BzgEOg19a3NNRk9Yc21BbTNzNlU/view?usp=share_link&resourcekey=0-OEVDCj5qgDBKTrC8ZswH3A
-//            HttpGet httpGet = new HttpGet("https://drive.google.com/uc?export=download&id=0BzgEOg19a3NNRk9Yc21BbTNzNlU");
-//
-//            try {
-//                InputStream inputStream = httpClient.execute(httpGet).getEntity().getContent();
-//                File videoFile = new File(Environment.getExternalStorageDirectory(), "Movies/backinblack.mp4");
-//                try (OutputStream outputStream = new FileOutputStream(videoFile)) {
-//                    byte[] buffer = new byte[1024];
-//                    int bytesRead;
-//                    while ((bytesRead = inputStream.read(buffer)) != -1) {
-//                        outputStream.write(buffer, 0, bytesRead);
-//                    }
-//                }
-//            } catch (ClientProtocolException e) {
-//                throw new RuntimeException(e);
-//            } catch (IOException e) {
-//                throw new RuntimeException(e);
-//            } finally {
-//                httpGet.releaseConnection();
-//            }
-//            return false;
-//        }
-//        @Override
-//        protected void onPostExecute(Boolean result) {
-//            if (result) {
-//                // Se o download for bem-sucedido, inicie a próxima atividade
-//                Intent intent = new Intent(DownloadVideoActivity.this, MainActivity.class);
-//                startActivity(intent);
-//            } else {
-//                // Caso contrário, lide com o erro
-//                // Exemplo: exibir uma mensagem de erro
-//                // Toast.makeText(MainActivity.this, "Erro no download", Toast.LENGTH_SHORT).show();
-//            }
-//        }
-//    }
-//
