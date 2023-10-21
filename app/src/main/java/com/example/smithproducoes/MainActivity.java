@@ -2,13 +2,9 @@ package com.example.smithproducoes;
 
 
 
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
-import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
@@ -28,7 +24,7 @@ public class MainActivity extends AppCompatActivity {
     VideoView videoView;
     private static final String TAG = "MyActivity";
 
-    ArrayList<VideoModel> arrayList = new ArrayList<>();
+    ArrayList<Video> arrayList = new ArrayList<>();
     ArrayList<String> videoUrls = new ArrayList<>();
     RecyclerView recyclerView;
     private static int currentVideo = 0;

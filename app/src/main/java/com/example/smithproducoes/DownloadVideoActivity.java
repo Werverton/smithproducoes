@@ -1,7 +1,6 @@
 package com.example.smithproducoes;
 
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
+
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
@@ -17,27 +16,17 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.net.Uri;
-import android.os.AsyncTask;
-import android.os.Build;
+
 import android.os.Bundle;
-import android.provider.Settings;
+
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.Response;
 
-import java.io.BufferedReader;
+
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -45,10 +34,17 @@ import android.os.Environment;
 import android.util.Log;
 import android.widget.Toast;
 
-import org.apache.http.client.ClientProtocolException;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.impl.client.HttpClients;
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.JsonObjectRequest;
+import com.android.volley.toolbox.Volley;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 
 public class DownloadVideoActivity extends AppCompatActivity {
 
@@ -68,7 +64,8 @@ public class DownloadVideoActivity extends AppCompatActivity {
 
     private long downloadId;
     private int downloadCount = 0;
-    List<VideoModel> listDeUrls = new ArrayList<>();
+    List<Video> listDeUrls = new ArrayList<>();
+
 
 
 
@@ -78,6 +75,8 @@ public class DownloadVideoActivity extends AppCompatActivity {
         setContentView(R.layout.activity_download_video);
 
         isPermissionGranted();
+        deleteFilesInMoviesFolder();
+        getJsonData();
 
         urlListId = findViewById(R.id.URLInput);
 
@@ -89,39 +88,84 @@ public class DownloadVideoActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
 
-                String url1 = "https://drive.google.com/uc?export=download&id=1uHEEku8YIhVqixThZ3qv70ZQ2Zdnl0fC";
-                String url2 = "https://drive.google.com/uc?export=download&id=1EyJ0bWwGtmlpZj1TTdteD9GOiHU_KIO0";
-                String url3 = "https://drive.google.com/uc?export=download&id=1bNsof3tOIrcHkFUC88X1EWW6t8FyOair";
-                String url4 = "https://drive.google.com/uc?export=download&id=1Mm56njT0dQ3mZzRaAGsZHw9lGAtXbMEF";
-                String url5 = "https://drive.google.com/uc?export=download&id=1sq3btgjqeb_L5MPlKESMYVSOIjTIenav";
 
-                listDeUrls.add(new VideoModel(url1, "propaganda1","qualquernome1"));
-                listDeUrls.add(new VideoModel(url2, "propaganda2","qualquernome2"));
-                listDeUrls.add(new VideoModel(url3, "proganda3", "Qualquernome3"));
-                listDeUrls.add(new VideoModel(url4, "propaganda4", "uqlauqernome4"));
-                listDeUrls.add(new VideoModel(url5, "propaganda5", "qualquernome5"));
-                //Url da lista
-                //https://drive.google.com/file/d/1j53hOMduSy7i1I-QTS1vmx0ktjLKAVHd/view?usp=share_link
-                //https://drive.google.com/file/d/1j53hOMduSy7i1I-QTS1vmx0ktjLKAVHd/view?usp=share_link
+
+                //urldo json https://raw.githubusercontent.com/Werverton/justJsonRaw/main/playlistvideo.json
+                String jsonUrl = "https://raw.githubusercontent.com/Werverton/justJsonRaw/main/playlistvideo.json";
+
 
                 String urlBase = "https://drive.google.com/uc?export=download&id=";
                 String playlistUrl = urlBase+urlListId.getText().toString();
                 Toast.makeText(DownloadVideoActivity.this, playlistUrl, Toast.LENGTH_SHORT).show();
 
 
-
-
-                //String videoUrl = "https://drive.google.com/uc?export=download&id=1Mm56njT0dQ3mZzRaAGsZHw9lGAtXbMEF";
-                //String videoTitle = "video";
-                //downloadJsonFile(DownloadVideoActivity.this, playlistUrl);
-                for (VideoModel video : listDeUrls) {
-                    downloadVideo(DownloadVideoActivity.this, video.getUrl(), video.getName());
+                for (Video video : listDeUrls) {
+                    downloadVideo(DownloadVideoActivity.this, video.getFileId(), video.getName());
                 }
 
             }
         });
         registerReceiver(onDownloadComplete, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
 
+    }
+
+    private void getJsonData() {
+        String URL ="https://raw.githubusercontent.com/Werverton/justJsonRaw/main/playlistvideo.json";
+        RequestQueue requestQueue = Volley.newRequestQueue(this);
+        JsonObjectRequest jsonObjectRequest = new JsonObjectRequest(Request.Method.GET, URL, null, new Response.Listener<JSONObject>() {
+            @Override
+            public void onResponse(JSONObject response) {
+
+                try {
+                    JSONArray videos = response.getJSONArray("videos");
+                    //JSONObject videosData = videos.getJSONObject(0);
+
+                    for (int i = 0; i < videos.length(); i++) {
+                        JSONObject videoObject = videos.getJSONObject(i);
+                        Video video = new Video(
+                                videoObject.getString("url"),
+                                videoObject.getString("fileId"),
+                                videoObject.getString("name"));
+                        listDeUrls.add(video);
+
+                        Log.i(TAG,"Video objeto: "+video.toString());
+
+                    }
+
+
+
+                } catch (JSONException e) {
+                    throw new RuntimeException(e);
+                }
+
+            }
+        }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                Log.d(TAG,"onErrorResponse"+error.getMessage());
+            }
+        });
+        requestQueue.add(jsonObjectRequest);
+    }
+
+    public void deleteFilesInMoviesFolder() {
+        String moviesFolderPath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES).getPath();
+        File moviesFolder = new File(moviesFolderPath);
+
+        if (moviesFolder.isDirectory()) {
+            File[] files = moviesFolder.listFiles();
+            if (files != null) {
+                for (File file : files) {
+                    if (file.isFile()) {
+                        if (file.delete()) {
+                            Log.d("DeleteFilesActivity", "Arquivo excluído: " + file.getName());
+                        } else {
+                            Log.e("DeleteFilesActivity", "Falha ao excluir arquivo: " + file.getName());
+                        }
+                    }
+                }
+            }
+        }
     }
 
 
@@ -170,9 +214,12 @@ public class DownloadVideoActivity extends AppCompatActivity {
         return false;
     }
 
-    private void downloadVideo(DownloadVideoActivity downloadVideoActivity, String videoUrl, String videoTitle) {
+    private void downloadVideo(DownloadVideoActivity downloadVideoActivity, String fileId, String videoTitle) {
         Log.i(TAG, "Download video iniciado");
             try{
+                Toast.makeText(DownloadVideoActivity.this, "Baixando"+videoTitle, Toast.LENGTH_SHORT).show();
+                String videoUrl = BASE_URL+fileId;
+
                 DownloadManager.Request request = new DownloadManager.Request(Uri.parse(videoUrl));
                 request.setTitle(videoTitle);
                 request.setDescription("Baixando Video");

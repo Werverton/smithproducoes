@@ -1,11 +1,11 @@
 package com.example.smithproducoes;
 
-public class VideoModel {
+public class Video {
     String url;
     String fileId;
     String name;
 
-    public VideoModel(String url, String fileId, String name) {
+    public Video(String url, String fileId, String name) {
         this.url = url;
         this.fileId = fileId;
         this.name = name;
@@ -33,5 +33,14 @@ public class VideoModel {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    @Override
+    public String toString() {
+        return "Video{" +
+                "url='" + url + '\'' +
+                ", fileId='" + fileId + '\'' +
+                ", name='" + name + '\'' +
+                '}';
     }
 }
