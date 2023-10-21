@@ -5,7 +5,7 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
-
+import android.database.Cursor;
 import android.Manifest;
 import android.app.AlertDialog;
 import android.app.DownloadManager;
@@ -32,6 +32,8 @@ import java.util.List;
 
 import android.os.Environment;
 import android.util.Log;
+import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.android.volley.Request;
@@ -57,17 +59,19 @@ public class DownloadVideoActivity extends AppCompatActivity {
 
     private long downloadID;
     private EditText urlListId;
+    private TextView progresso;
     private Button downloadButton;
     private static final String TAG = "DownloadVideoActivity";
 
     private static final String BASE_URL = "https://drive.google.com/uc?export=download&id=";
+    private static final String JSON_URL = "https://https://raw.githubusercontent.com/Werverton/justJsonRaw/main/playlistvideo.json.google.com/uc?export=download&id=";
 
     private long downloadId;
+
+    private DownloadManager downloadManager;
     private int downloadCount = 0;
     List<Video> listDeUrls = new ArrayList<>();
-
-
-
+    private ProgressBar progressBar;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -79,6 +83,9 @@ public class DownloadVideoActivity extends AppCompatActivity {
         getJsonData();
 
         urlListId = findViewById(R.id.URLInput);
+        progressBar = findViewById(R.id.progressBar);
+        downloadManager = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
+        progresso = findViewById(R.id.textView2);
 
 
 
@@ -99,12 +106,12 @@ public class DownloadVideoActivity extends AppCompatActivity {
                 Toast.makeText(DownloadVideoActivity.this, playlistUrl, Toast.LENGTH_SHORT).show();
 
 
-                for (Video video : listDeUrls) {
-                    downloadVideo(DownloadVideoActivity.this, video.getFileId(), video.getName());
-                }
+                downloadVideo(listDeUrls.get(downloadCount).getFileId(), listDeUrls.get(downloadCount).getName());
+
 
             }
         });
+
         registerReceiver(onDownloadComplete, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
 
     }
@@ -169,33 +176,6 @@ public class DownloadVideoActivity extends AppCompatActivity {
     }
 
 
-    private void downloadJsonFile(DownloadVideoActivity downloadVideoActivity, String playlistUrl) {
-        Log.i(TAG, "Download JSON iniciado");
-        try{
-            DownloadManager.Request request = new DownloadManager.Request(Uri.parse(playlistUrl));
-            request.setTitle("Baixando playlist");
-            request.setDescription("Baixando Video");
-
-
-            request.setDestinationInExternalPublicDir(Environment.DIRECTORY_MOVIES, "playlist" +".json");
-            request.setAllowedNetworkTypes(DownloadManager.Request.NETWORK_WIFI | DownloadManager.Request.NETWORK_MOBILE);
-
-            request.allowScanningByMediaScanner();
-            request.setAllowedOverMetered(true);
-            request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
-            request.setAllowedOverRoaming(true);
-
-            DownloadManager manager = (DownloadManager) downloadVideoActivity.getSystemService(Context.DOWNLOAD_SERVICE);
-            downloadID = manager.enqueue(request);
-        } catch (IllegalArgumentException e){
-            Log.e(TAG, e.toString());
-
-        }
-
-        Log.i(TAG, "Download JSON concluido");
-    }
-
-
     private boolean isVideoAlreadyDownloaded(String videoFileName) {
         // Obtenha o caminho da pasta "Movies"
         File moviesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES);
@@ -214,10 +194,10 @@ public class DownloadVideoActivity extends AppCompatActivity {
         return false;
     }
 
-    private void downloadVideo(DownloadVideoActivity downloadVideoActivity, String fileId, String videoTitle) {
+    private void downloadVideo(String fileId, String videoTitle) {
         Log.i(TAG, "Download video iniciado");
             try{
-                Toast.makeText(DownloadVideoActivity.this, "Baixando"+videoTitle, Toast.LENGTH_SHORT).show();
+                Toast.makeText(DownloadVideoActivity.this, "Baixando: "+videoTitle, Toast.LENGTH_SHORT).show();
                 String videoUrl = BASE_URL+fileId;
 
                 DownloadManager.Request request = new DownloadManager.Request(Uri.parse(videoUrl));
@@ -233,14 +213,15 @@ public class DownloadVideoActivity extends AppCompatActivity {
                 request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
                 request.setAllowedOverRoaming(true);
 
-                DownloadManager manager = (DownloadManager) downloadVideoActivity.getSystemService(Context.DOWNLOAD_SERVICE);
-                manager.enqueue(request);
+
+                downloadManager.enqueue(request);
+                progresso.setText("Fazendo download de: " + (downloadCount+1)+"/"+listDeUrls.size());
             } catch (IllegalArgumentException e){
                 Toast.makeText(DownloadVideoActivity.this, "Algo deu errado!", Toast.LENGTH_SHORT).show();
                 Log.e(TAG, "Line no: 455,Method: downloadFile: Download link is broken");
             }
 
-        Log.i(TAG, "Download video concluido.");
+
     }
 
     private BroadcastReceiver onDownloadComplete = new BroadcastReceiver() {
@@ -249,6 +230,10 @@ public class DownloadVideoActivity extends AppCompatActivity {
             if (receivedID != -1) {
 
                 downloadCount++;
+                if(downloadCount< listDeUrls.size()){
+                    Log.i(TAG, "Download video concluido.");
+                    downloadVideo(listDeUrls.get(downloadCount).getFileId(), listDeUrls.get(downloadCount).getName());
+                }
                 if(downloadCount== listDeUrls.size()){
                     Toast.makeText(DownloadVideoActivity.this, "Download concluído!", Toast.LENGTH_SHORT).show();
                     Intent newActivityIntent = new Intent(DownloadVideoActivity.this, MainActivity.class);
@@ -259,6 +244,7 @@ public class DownloadVideoActivity extends AppCompatActivity {
             }
         }
     };
+
 
     @Override
     protected void onDestroy() {
