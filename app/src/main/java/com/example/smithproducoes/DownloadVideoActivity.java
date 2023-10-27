@@ -1,10 +1,18 @@
 package com.example.smithproducoes;
 
 
+import androidx.activity.result.ActivityResult;
+import androidx.activity.result.ActivityResultCallback;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.loader.content.AsyncTaskLoader;
+
+import android.app.ProgressDialog;
 import android.database.Cursor;
 import android.Manifest;
 import android.app.AlertDialog;
@@ -17,6 +25,7 @@ import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 
+import android.os.AsyncTask;
 import android.os.Bundle;
 
 import android.view.View;
@@ -24,10 +33,14 @@ import android.widget.Button;
 import android.widget.EditText;
 
 
-
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import android.os.Environment;
@@ -36,26 +49,40 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.android.volley.AsyncCache;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
+import com.google.android.gms.auth.api.signin.GoogleSignIn;
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
+import com.google.android.gms.auth.api.signin.GoogleSignInClient;
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
+import com.google.android.gms.common.api.Scope;
+import com.google.android.gms.tasks.OnFailureListener;
+
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential;
+import com.google.api.client.googleapis.json.GoogleJsonResponseException;
+import com.google.api.client.http.javanet.NetHttpTransport;
+import com.google.api.client.json.gson.GsonFactory;
+import com.google.api.services.drive.Drive;
+import com.google.api.services.drive.DriveScopes;
+import com.google.api.services.drive.model.FileList;
+
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 
+
+
 public class DownloadVideoActivity extends AppCompatActivity {
 
     private static final int REQUEST_CODE = 1;
-//    private final ActivityResultLauncher<String> activityResultLauncher = registerForActivityResult(new ActivityResultContracts.RequestPermission(), result -> {
-//        if(result){
-//            requestStoragePermission();
-//        }
-//    });
 
     private long downloadID;
     private EditText urlListId;
@@ -66,12 +93,16 @@ public class DownloadVideoActivity extends AppCompatActivity {
     private static final String BASE_URL = "https://drive.google.com/uc?export=download&id=";
     private static final String JSON_URL = "https://https://raw.githubusercontent.com/Werverton/justJsonRaw/main/playlistvideo.json.google.com/uc?export=download&id=";
 
-    private long downloadId;
 
     private DownloadManager downloadManager;
     private int downloadCount = 0;
     List<Video> listDeUrls = new ArrayList<>();
     private ProgressBar progressBar;
+
+    DriveServiceHelper driveServiceHelper;
+    //Drive googleDriveServices;
+
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -79,8 +110,8 @@ public class DownloadVideoActivity extends AppCompatActivity {
         setContentView(R.layout.activity_download_video);
 
         isPermissionGranted();
-        deleteFilesInMoviesFolder();
-        getJsonData();
+        //deleteFilesInMoviesFolder();
+        //getJsonData();
 
         urlListId = findViewById(R.id.URLInput);
         progressBar = findViewById(R.id.progressBar);
@@ -95,25 +126,145 @@ public class DownloadVideoActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
 
+                requestSignIn();
 
-
-                //urldo json https://raw.githubusercontent.com/Werverton/justJsonRaw/main/playlistvideo.json
-                String jsonUrl = "https://raw.githubusercontent.com/Werverton/justJsonRaw/main/playlistvideo.json";
-
-
-                String urlBase = "https://drive.google.com/uc?export=download&id=";
-                String playlistUrl = urlBase+urlListId.getText().toString();
-                Toast.makeText(DownloadVideoActivity.this, playlistUrl, Toast.LENGTH_SHORT).show();
-
-
-                downloadVideo(listDeUrls.get(downloadCount).getFileId(), listDeUrls.get(downloadCount).getName());
-
+                //downloadVideo(listDeUrls.get(downloadCount).getFileId(), listDeUrls.get(downloadCount).getName());
 
             }
         });
 
-        registerReceiver(onDownloadComplete, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
+        //registerReceiver(onDownloadComplete, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
 
+    }
+
+    ActivityResultLauncher<Intent> activityResultLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            activityResult -> {
+                int result = activityResult.getResultCode();
+                Intent data = activityResult.getData();
+                if(result == RESULT_OK){
+                    Log.i(TAG,"Chamando handleSignIntent() ");
+                    handleSignIntent(data);
+                }
+            }
+    );
+    private void requestSignIn(){
+        GoogleSignInOptions signInOptions = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                .requestEmail()
+                .requestScopes(new Scope(DriveScopes.DRIVE_FILE))
+                .build();
+
+        GoogleSignInClient client = GoogleSignIn.getClient(this, signInOptions);
+
+        activityResultLauncher.launch(client.getSignInIntent());
+        //startActivityForResult(client.getSignInIntent(), 400);
+
+
+    }
+
+
+    private void handleSignIntent(Intent data) {
+        Log.i(TAG,"handleSignIntent " +data.getData());
+        GoogleSignIn.getSignedInAccountFromIntent(data)
+                .addOnSuccessListener(googleSignInAccount -> {
+
+                        GoogleAccountCredential credential = GoogleAccountCredential.
+                                usingOAuth2(DownloadVideoActivity.this, Collections.singleton(DriveScopes.DRIVE_FILE));
+                        credential.setSelectedAccount(googleSignInAccount.getAccount());
+                        Drive googleDriveServices = new Drive.Builder(
+                                new NetHttpTransport(),
+                                new GsonFactory(),
+                                credential)
+                                .setApplicationName("SmithProducoes").build();
+
+
+                    new DowloadFileTask().execute(googleDriveServices);
+                    //new ListDriveFilesTask().execute(googleDriveServices);
+                    //driveServiceHelper = new DriveServiceHelper(googleDriveServices);
+                })
+                .addOnFailureListener(e -> Toast.makeText(DownloadVideoActivity.this, "Algo deu errado! " + e.getMessage(), Toast.LENGTH_SHORT).show());
+    }
+
+    private class DowloadFileTask extends AsyncTask<Drive, String, ByteArrayOutputStream>{
+
+        @Override
+        protected ByteArrayOutputStream doInBackground(Drive... drives) {
+            if (drives.length == 0) {
+                // Handle the case where no Drive service instance is provided
+                return null;
+            }
+            String fileId = "0BzgEOg19a3NNRk9Yc21BbTNzNlU";
+
+            Drive googleDriveServices = drives[0];
+
+            try{
+                OutputStream outputStream = new ByteArrayOutputStream();
+
+                googleDriveServices.files().get(fileId).executeMediaAndDownloadTo(outputStream);
+                return (ByteArrayOutputStream) outputStream;
+
+            } catch (GoogleJsonResponseException e){
+                Log.i(TAG,e.getMessage());
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            return null;
+        }
+
+    }
+
+    // Define an AsyncTask to list Google Drive files
+    private class ListDriveFilesTask extends AsyncTask<Drive, Void, List<com.google.api.services.drive.model.File>> {
+        @Override
+        protected List<com.google.api.services.drive.model.File> doInBackground(Drive... drives) {
+            if (drives.length == 0) {
+                // Handle the case where no Drive service instance is provided
+                return null;
+            }
+
+            Drive googleDriveServices = drives[0];
+            try {
+                FileList fileList = googleDriveServices.files().list()
+                        .setPageSize(10)
+                        .setFields("nextPageToken, files(id, name)")
+                        .execute();
+
+                return fileList.getFiles();
+            } catch (IOException e) {
+                e.printStackTrace();
+                return null;
+            }
+        }
+
+        @Override
+        protected void onPostExecute(List<com.google.api.services.drive.model.File> files) {
+            if (files != null && !files.isEmpty()) {
+                for (com.google.api.services.drive.model.File file : files) {
+                    Log.i(TAG, "File Name: " + file.getName());
+                    Log.i(TAG, "File ID: " + file.getId());
+                }
+            } else {
+                Log.i(TAG, "No files found.");
+            }
+        }
+    }
+
+    public void uploadPdfFile(View v){
+        ProgressDialog progressDialog = new ProgressDialog(DownloadVideoActivity.this);
+        progressDialog.setTitle("Uploading to Google Drive");
+        progressDialog.setMessage("Please wait... ");
+        progressDialog.show();
+        String filePath = "/storage/emulated/0/mypdf.pdf";
+        driveServiceHelper.createFilePDF(filePath).addOnSuccessListener(s -> {
+            progressDialog.dismiss();
+            Toast.makeText(DownloadVideoActivity.this, "Upload feito com sucesso", Toast.LENGTH_SHORT).show();
+        }).addOnFailureListener(new OnFailureListener() {
+            @Override
+            public void onFailure(@NonNull Exception e) {
+                progressDialog.dismiss();
+                Toast.makeText(DownloadVideoActivity.this, "Algo deu errado! " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     private void getJsonData() {
