@@ -5,6 +5,8 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.Manifest;
 import android.app.AlertDialog;
@@ -27,6 +29,7 @@ import android.widget.EditText;
 
 import java.io.File;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -80,78 +83,69 @@ public class DownloadVideoActivity extends AppCompatActivity {
 
         isPermissionGranted();
         deleteFilesInMoviesFolder();
-        getJsonData();
+
 
         urlListId = findViewById(R.id.URLInput);
         progressBar = findViewById(R.id.progressBar);
         downloadManager = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
         progresso = findViewById(R.id.textView2);
 
+//        SharedPreferences sharedPreferences = getSharedPreferences("MinhasPreferencias", Context.MODE_PRIVATE);
+//        String textoDigitado = urlListId.getText().toString();
+//
+//        SharedPreferences.Editor editor = sharedPreferences.edit();
+//        editor.putString("texto_salvo", textoDigitado);
+//        editor.apply();
+
+//        SharedPreferences sharedPreferences = getSharedPreferences("MinhasPreferencias", Context.MODE_PRIVATE);
+//        String textoSalvo = sharedPreferences.getString("texto_salvo", "");
+//        urlListId.setText(textoSalvo);
+
+
+
 
 
         downloadButton = findViewById(R.id.button);
 
-        downloadButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
+        downloadButton.setOnClickListener(view -> {
 
+            getJsonData(urlListId.getText().toString());
 
+            //downloadVideo(listDeUrls.get(downloadCount).getFileId(), listDeUrls.get(downloadCount).getName());
 
-                //urldo json https://raw.githubusercontent.com/Werverton/justJsonRaw/main/playlistvideo.json
-                String jsonUrl = "https://raw.githubusercontent.com/Werverton/justJsonRaw/main/playlistvideo.json";
-
-
-                String urlBase = "https://drive.google.com/uc?export=download&id=";
-                String playlistUrl = urlBase+urlListId.getText().toString();
-                Toast.makeText(DownloadVideoActivity.this, playlistUrl, Toast.LENGTH_SHORT).show();
-
-
-                downloadVideo(listDeUrls.get(downloadCount).getFileId(), listDeUrls.get(downloadCount).getName());
-
-
-            }
         });
 
         registerReceiver(onDownloadComplete, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
 
     }
 
-    private void getJsonData() {
-        String URL ="https://raw.githubusercontent.com/Werverton/justJsonRaw/main/playlistvideo.json";
+    private void getJsonData(String URL) {
+        //String URL ="https://raw.githubusercontent.com/Werverton/justJsonRaw/main/playlistvideo.json";
         RequestQueue requestQueue = Volley.newRequestQueue(this);
-        JsonObjectRequest jsonObjectRequest = new JsonObjectRequest(Request.Method.GET, URL, null, new Response.Listener<JSONObject>() {
-            @Override
-            public void onResponse(JSONObject response) {
+        JsonObjectRequest jsonObjectRequest = new JsonObjectRequest(Request.Method.GET, URL, null, response -> {
 
-                try {
-                    JSONArray videos = response.getJSONArray("videos");
-                    //JSONObject videosData = videos.getJSONObject(0);
+            try {
+                JSONArray videos = response.getJSONArray("videos");
+                //JSONObject videosData = videos.getJSONObject(0);
 
-                    for (int i = 0; i < videos.length(); i++) {
-                        JSONObject videoObject = videos.getJSONObject(i);
-                        Video video = new Video(
-                                videoObject.getString("url"),
-                                videoObject.getString("fileId"),
-                                videoObject.getString("name"));
-                        listDeUrls.add(video);
+                for (int i = 0; i < videos.length(); i++) {
+                    JSONObject videoObject = videos.getJSONObject(i);
+                    Video video = new Video(
+                            videoObject.getString("url"),
+                            videoObject.getString("fileId"),
+                            videoObject.getString("name"));
+                    listDeUrls.add(video);
 
-                        Log.i(TAG,"Video objeto: "+video.toString());
+                    Log.i(TAG,"Video objeto: "+video.toString());
 
-                    }
-
-
-
-                } catch (JSONException e) {
-                    throw new RuntimeException(e);
                 }
+                downloadVideo(listDeUrls.get(downloadCount).getFileId(), listDeUrls.get(downloadCount).getName());
 
+            } catch (JSONException e) {
+                throw new RuntimeException(e);
             }
-        }, new Response.ErrorListener() {
-            @Override
-            public void onErrorResponse(VolleyError error) {
-                Log.d(TAG,"onErrorResponse"+error.getMessage());
-            }
-        });
+
+        }, error -> Log.d(TAG,"onErrorResponse"+error.getMessage()));
         requestQueue.add(jsonObjectRequest);
     }
 
