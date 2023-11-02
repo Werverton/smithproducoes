@@ -256,7 +256,7 @@ public class DownloadVideoActivity extends AppCompatActivity {
     private void isPermissionGranted(){
         if(ContextCompat.checkSelfPermission(DownloadVideoActivity.this,
                 Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED){
-            Toast.makeText(DownloadVideoActivity.this, "you have al", Toast.LENGTH_SHORT).show();
+            Toast.makeText(DownloadVideoActivity.this, "Permissões concedidas.", Toast.LENGTH_SHORT).show();
         } else {
             requestStoragePermission();
         }
