@@ -64,6 +64,7 @@ public class DownloadVideoActivity extends AppCompatActivity {
     private EditText urlListId;
     private TextView progresso;
     private Button downloadButton;
+    Video video;
     private static final String TAG = "DownloadVideoActivity";
 
     private static final String BASE_URL = "https://drive.google.com/uc?export=download&id=";
@@ -130,15 +131,20 @@ public class DownloadVideoActivity extends AppCompatActivity {
 
                 for (int i = 0; i < videos.length(); i++) {
                     JSONObject videoObject = videos.getJSONObject(i);
-                    Video video = new Video(
+                    video = new Video(
                             videoObject.getString("url"),
-                            videoObject.getString("fileId"),
+                            //videoObject.getString("fileId"),
                             videoObject.getString("name"));
                     listDeUrls.add(video);
 
                     Log.i(TAG,"Video objeto: "+video.toString());
 
                 }
+
+                for (Video video1 : listDeUrls){
+                    video1.setFileId(GettingIdFromUrlWithRegex.gettingId(video1.getUrl()));
+                }
+
                 downloadVideo(listDeUrls.get(downloadCount).getFileId(), listDeUrls.get(downloadCount).getName());
 
             } catch (JSONException e) {

@@ -3,4 +3,6 @@
     <string name="textFiedName">Categoria</string>
     <string name="ButtonName">Salve e Download</string>
     <string name="Progresso">Progresso</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
 </resources>

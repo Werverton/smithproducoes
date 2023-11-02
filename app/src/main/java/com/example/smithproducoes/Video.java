@@ -4,6 +4,11 @@ public class Video {
     String url;
     String fileId;
     String name;
+    public Video(String url, String name) {
+        this.url = url;
+        this.fileId = fileId;
+        this.name = name;
+    }
 
     public Video(String url, String fileId, String name) {
         this.url = url;
