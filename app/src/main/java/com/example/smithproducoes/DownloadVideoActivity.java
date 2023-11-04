@@ -7,7 +7,6 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import android.content.SharedPreferences;
-import android.database.Cursor;
 import android.Manifest;
 import android.app.AlertDialog;
 import android.app.DownloadManager;
@@ -21,7 +20,6 @@ import android.net.Uri;
 
 import android.os.Bundle;
 
-import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 
@@ -29,7 +27,6 @@ import android.widget.EditText;
 
 import java.io.File;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -41,10 +38,11 @@ import android.widget.Toast;
 
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
-import com.android.volley.Response;
-import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
+import com.example.smithproducoes.model.Video;
+import com.example.smithproducoes.utils.GettingIdFromUrlWithRegex;
+import com.example.smithproducoes.utils.SharedPreferenceManager;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -76,14 +74,20 @@ public class DownloadVideoActivity extends AppCompatActivity {
     private int downloadCount = 0;
     List<Video> listDeUrls = new ArrayList<>();
     private ProgressBar progressBar;
+    private static final String SHARED_PREFS_KEY = "MyPrefs";
+    private static final String URL_KEY = "url_key";
+    private static final String VERSION_KEY = "version_key";
+    SharedPreferences sharedPreferences;
+    SharedPreferenceManager sharedPreferenceManager = new SharedPreferenceManager();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_download_video);
 
+
         isPermissionGranted();
-        deleteFilesInMoviesFolder();
+        //deleteFilesInMoviesFolder();
 
 
         urlListId = findViewById(R.id.URLInput);
@@ -91,26 +95,23 @@ public class DownloadVideoActivity extends AppCompatActivity {
         downloadManager = (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
         progresso = findViewById(R.id.textView2);
 
-//        SharedPreferences sharedPreferences = getSharedPreferences("MinhasPreferencias", Context.MODE_PRIVATE);
-//        String textoDigitado = urlListId.getText().toString();
-//
-//        SharedPreferences.Editor editor = sharedPreferences.edit();
-//        editor.putString("texto_salvo", textoDigitado);
-//        editor.apply();
-
-//        SharedPreferences sharedPreferences = getSharedPreferences("MinhasPreferencias", Context.MODE_PRIVATE);
-//        String textoSalvo = sharedPreferences.getString("texto_salvo", "");
-//        urlListId.setText(textoSalvo);
+        sharedPreferences = getSharedPreferences(SHARED_PREFS_KEY, Context.MODE_PRIVATE);
 
 
+        String value = sharedPreferences.getString(URL_KEY, "");
+        Log.i(TAG,"Value : "+ value);
 
-
+        if (!value.isEmpty()) {
+            urlListId.setText(value);
+        }
 
         downloadButton = findViewById(R.id.button);
 
         downloadButton.setOnClickListener(view -> {
 
-            getJsonData(urlListId.getText().toString());
+            sharedPreferenceManager.saveUrlToSharedPreferences(URL_KEY, urlListId.getText().toString());
+
+            getJsonData();
 
             //downloadVideo(listDeUrls.get(downloadCount).getFileId(), listDeUrls.get(downloadCount).getName());
 
@@ -120,14 +121,17 @@ public class DownloadVideoActivity extends AppCompatActivity {
 
     }
 
-    private void getJsonData(String URL) {
-        //String URL ="https://raw.githubusercontent.com/Werverton/justJsonRaw/main/playlistvideo.json";
+
+    private void getJsonData() {
+
+        String URL = sharedPreferences.getString(URL_KEY, "");
         RequestQueue requestQueue = Volley.newRequestQueue(this);
         JsonObjectRequest jsonObjectRequest = new JsonObjectRequest(Request.Method.GET, URL, null, response -> {
 
             try {
+                sharedPreferenceManager.saveUrlToSharedPreferences(VERSION_KEY, response.getString("version"));
+                Log.i(TAG,"Version : "+ response.getString("version"));
                 JSONArray videos = response.getJSONArray("videos");
-                //JSONObject videosData = videos.getJSONObject(0);
 
                 for (int i = 0; i < videos.length(); i++) {
                     JSONObject videoObject = videos.getJSONObject(i);
@@ -195,6 +199,10 @@ public class DownloadVideoActivity extends AppCompatActivity {
     }
 
     private void downloadVideo(String fileId, String videoTitle) {
+        if(isVideoAlreadyDownloaded(listDeUrls.get(downloadCount).getName())){
+            downloadCount++;
+            downloadVideo(listDeUrls.get(downloadCount).getFileId(), listDeUrls.get(downloadCount).getName());
+        }
         Log.i(TAG, "Download video iniciado");
             try{
                 Toast.makeText(DownloadVideoActivity.this, "Baixando: "+videoTitle, Toast.LENGTH_SHORT).show();

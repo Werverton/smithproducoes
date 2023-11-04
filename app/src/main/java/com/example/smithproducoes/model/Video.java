@@ -1,4 +1,4 @@
-package com.example.smithproducoes;
+package com.example.smithproducoes.model;
 
 public class Video {
     String url;

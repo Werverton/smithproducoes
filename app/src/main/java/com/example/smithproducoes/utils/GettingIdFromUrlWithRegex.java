@@ -1,4 +1,4 @@
-package com.example.smithproducoes;
+package com.example.smithproducoes.utils;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 public class GettingIdFromUrlWithRegex {

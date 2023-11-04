@@ -5,12 +5,20 @@ package com.example.smithproducoes;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.RecyclerView;
 
+import android.app.job.JobInfo;
+import android.app.job.JobScheduler;
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
 import android.widget.MediaController;
 import android.widget.Toast;
 import android.widget.VideoView;
+
+import com.example.smithproducoes.core.UpdateCheckJobService;
+import com.example.smithproducoes.model.Video;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -29,6 +37,7 @@ public class MainActivity extends AppCompatActivity {
     RecyclerView recyclerView;
     private static int currentVideo = 0;
     private int position = 0;
+    private static final int UPDATE_JOB_ID = 1;
 
 
 
@@ -36,6 +45,15 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        ComponentName serviceName = new ComponentName(getPackageName(), UpdateCheckJobService.class.getName());
+        JobInfo jobInfo = new JobInfo.Builder(UPDATE_JOB_ID, serviceName)
+                .setPeriodic(24 * 60 * 60 * 1000) // A cada 24 horas
+                .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
+                .setPersisted(true)
+                .build();
+
+        JobScheduler jobScheduler = (JobScheduler) getSystemService(Context.JOB_SCHEDULER_SERVICE);
+        jobScheduler.schedule(jobInfo);
 
 
 //        if (ContextCompat.checkSelfPermission( MainActivity.this, android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
@@ -51,6 +69,9 @@ public class MainActivity extends AppCompatActivity {
         Log.i(TAG, "tamanho da list "+ videoUrls.size());
         if(videoUrls.isEmpty()){
             Toast.makeText(this,"Sem Videos", Toast.LENGTH_SHORT).show();
+            Intent newActivityIntent = new Intent( MainActivity.this, DownloadVideoActivity.class);
+            startActivity(newActivityIntent);
+            finish();
         }
         playVideo(position);
 
